@@ -17,3 +17,6 @@ dependencies = [
 
 [project.scripts]
 buddy = "buddy.cli:app"
+
+[project.optional-dependencies]
+dev = ["pytest"]

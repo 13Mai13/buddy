@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -6,15 +8,17 @@ from rich.progress import Progress
 
 from .embeddings import embed_texts
 from .db import insert_chunks, clear_repo
-
-CODE_EXTENSIONS = {".py", ".js", ".ts", ".tsx", ".go", ".rb", ".java", ".kt", ".rs"}
+from .filetypes import CODE_EXTENSIONS, SKIP_DIRS, is_code_file
 
 
 def iter_code_files(repo_root: Path) -> Iterable[Path]:
-    for root, _, files in os.walk(repo_root):
+    """Yield code files under repo_root, respecting supported extensions and SKIP_DIRS."""
+    for root, dirs, files in os.walk(repo_root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS] # To avoid chunking unwanted directories
+
         for name in files:
             path = Path(root) / name
-            if path.suffix in CODE_EXTENSIONS:
+            if is_code_file(path):
                 yield path
 
 
