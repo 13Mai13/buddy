@@ -30,6 +30,16 @@ def chunk_content(content: str, max_lines: int = 80) -> List[str]:
         chunks.append(chunk)
     return chunks
 
+def create_syntax_aware_chunks(content: str) -> List[str]:
+    """
+    Create syntax-aware chunks of code. We'll use the AST to create chunks that are more likely to be meaningful.
+    """
+
+    import ast 
+    tree = ast.parse(content)
+
+
+
 
 def index_repo(repo_root: Path) -> None:
     repo_root = repo_root.resolve()
@@ -46,7 +56,8 @@ def index_repo(repo_root: Path) -> None:
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
         except Exception:
-            continue
+            continu
+        import pdb; pdb.set_trace()
         chunks = chunk_content(text)
         for chunk in chunks:
             all_texts.append(chunk)
