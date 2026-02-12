@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Dict, Any
+import ast
 
 @dataclass
 class CodeUnit:
@@ -158,3 +159,31 @@ def create_syntax_aware_units(content: str, file_path: str = "") -> List[CodeUni
 
     Visitor().visit(tree)
     return units
+
+def render_unit_for_embedding(unit: CodeUnit) -> str:
+    """
+    Create the structured text view that you feed to the embedding model.
+    """
+    parts = []
+
+    if unit.file_path:
+        parts.append(f"[FILE] {unit.file_path}")
+
+    if unit.unit_type in ("class", "function", "method", "block"):
+        parts.append(f"[TYPE] {unit.unit_type}")
+
+    if unit.name:
+        # e.g. [CLASS] LoginService, [FUNCTION] authenticate_user(...)
+        label = unit.unit_type.upper()
+        sig_or_name = unit.signature or unit.name
+        parts.append(f"[{label}] {sig_or_name}")
+
+    if unit.docstring:
+        parts.append(f"[DOC] {unit.docstring}")
+
+    # You can truncate the body here if needed
+    if unit.code_body:
+        parts.append("[CODE]")
+        parts.append(unit.code_body)
+
+    return "\n".join(parts)

@@ -9,6 +9,7 @@ from rich.progress import Progress
 from .embeddings import embed_texts
 from .db import insert_chunks, clear_repo
 from .filetypes import CODE_EXTENSIONS, SKIP_DIRS, is_code_file
+from .code_chunk_indexer import create_syntax_aware_units, render_unit_for_embedding
 
 
 def iter_code_files(repo_root: Path) -> Iterable[Path]:
@@ -30,16 +31,12 @@ def chunk_content(content: str, max_lines: int = 80) -> List[str]:
         chunks.append(chunk)
     return chunks
 
-def create_syntax_aware_chunks(content: str) -> List[str]:
+def create_syntax_aware_chunks(content: str, file_path: str = "") -> List[str]:
     """
-    Create syntax-aware chunks of code. We'll use the AST to create chunks that are more likely to be meaningful.
+    Return syntax-aware *text chunks* ready to be embedded.
     """
-
-    import ast 
-    tree = ast.parse(content)
-
-
-
+    units = create_syntax_aware_units(content, file_path=file_path)
+    return [render_unit_for_embedding(u) for u in units]
 
 def index_repo(repo_root: Path) -> None:
     repo_root = repo_root.resolve()
@@ -56,8 +53,8 @@ def index_repo(repo_root: Path) -> None:
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
         except Exception:
-            continu
-        import pdb; pdb.set_trace()
+            continue
+        syntax_aware_chunks = create_syntax_aware_chunks(text)
         chunks = chunk_content(text)
         for chunk in chunks:
             all_texts.append(chunk)
