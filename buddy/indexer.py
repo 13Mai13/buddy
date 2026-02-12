@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Iterable, List, Tuple
@@ -6,15 +8,18 @@ from rich.progress import Progress
 
 from .embeddings import embed_texts
 from .db import insert_chunks, clear_repo
-
-CODE_EXTENSIONS = {".py", ".js", ".ts", ".tsx", ".go", ".rb", ".java", ".kt", ".rs"}
+from .filetypes import CODE_EXTENSIONS, SKIP_DIRS, is_code_file
+from .code_chunk_indexer import create_syntax_aware_units, render_unit_for_embedding
 
 
 def iter_code_files(repo_root: Path) -> Iterable[Path]:
-    for root, _, files in os.walk(repo_root):
+    """Yield code files under repo_root, respecting supported extensions and SKIP_DIRS."""
+    for root, dirs, files in os.walk(repo_root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS] # To avoid chunking unwanted directories
+
         for name in files:
             path = Path(root) / name
-            if path.suffix in CODE_EXTENSIONS:
+            if is_code_file(path):
                 yield path
 
 
@@ -26,6 +31,12 @@ def chunk_content(content: str, max_lines: int = 80) -> List[str]:
         chunks.append(chunk)
     return chunks
 
+def create_syntax_aware_chunks(content: str, file_path: str = "") -> List[str]:
+    """
+    Return syntax-aware *text chunks* ready to be embedded.
+    """
+    units = create_syntax_aware_units(content, file_path=file_path)
+    return [render_unit_for_embedding(u) for u in units]
 
 def index_repo(repo_root: Path) -> None:
     repo_root = repo_root.resolve()
@@ -43,6 +54,7 @@ def index_repo(repo_root: Path) -> None:
             text = path.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             continue
+        syntax_aware_chunks = create_syntax_aware_chunks(text)
         chunks = chunk_content(text)
         for chunk in chunks:
             all_texts.append(chunk)
