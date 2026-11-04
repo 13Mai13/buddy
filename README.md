@@ -1,214 +1,49 @@
 # buddy
 
-> *Archived: built in 2025–26 to explore local RAG over code. Not maintained.*
+> *Archived: a 2-day MVP from December 2025 (plus one follow-up in February 2026). Not maintained.*
 
-# 🧠 Buddy — Your Private AI Onboarding Assistant for Codebases
+A small local CLI to ask questions about a codebase. It embeds code chunks locally, stores them in SQLite, retrieves the closest ones by cosine similarity and asks a local LLM (Ollama) to answer from them. Nothing leaves your machine.
 
-**Buddy** helps developers understand complex codebases **fast**.  
-It indexes your repositories locally and lets you ask natural language questions like:
+I built it to try local RAG over code end to end. It works, but answer quality is rough.
 
-> “Where is authentication handled?”  
-> “Which files implement onboarding?”  
-> “What calls this function?”  
-> “How do these services connect?”
+## What it does
 
-All AI runs **locally**, stays **private**, and requires **no cloud**
+- `buddy init <path> [<path> ...]`: index one or more repos
+- `buddy ask "Where is login handled?"`: answer a question from the top 8 retrieved chunks
+- `buddy summary`: write a high-level overview of an indexed repo
 
-## 🚀 Why Buddy?
-
-Modern engineering teams struggle with:
-
-- ⚠️ Dozens of repos  
-- ⚠️ Outdated or missing documentation  
-- ⚠️ Tribal knowledge held by senior engineers  
-- ⚠️ Onboarding that takes weeks or months  
-- ⚠️ No safe way to use cloud AI (fintech, healthcare, enterprise, gov…)
-
-Buddy solves this by:
-
-- 📁 Indexing your entire codebase  
-- 🧠 Using local embeddings + local LLMs (Ollama)  
-- 🔍 Providing semantic search & RAG  
-- 🗺️ Generating onboarding summaries  
-- 🧑‍🏫 Acting as an “AI teammate” who understands your system  
-
-All **100% private**, all **on your machine**.
-
-## ✨ Features (MVP)
-
-### 🔍 Semantic Code Search
-Ask Buddy questions about your repos:
-
-```bash
-buddy ask "Where is login handled?"
-```
-Get answers referencing specific files & logic.
-
-### 📚 Multi-Repo Indexing
-
-```
-buddy init ./backend ./frontend ./services/auth
-```
-
-Index many repos at once.
-
-### 📝 Onboarding Summaries
-
-```
-buddy summary
-```
-
-Great for new developers joining a project.
-
-
-## 🔒 Local-Only AI
-
-* Embeddings run locally
-
-* Vector DB stored locally (SQLite)
-
-* LLM runs via Ollama
-
-* No cloud, no telemetry, no API keys
-
-* Buddy is private by design.
-
-
-## 📦 Installation (via uv)
-
-Clone the repo:
-
-```
-git clone https://github.com/YOURNAME/buddy
-cd buddy
-```
-
-Create & activate environment:
-
-```
-uv venv
-source .venv/bin/activate
-```
-
-Install Buddy:
-
-```
-uv pip install -e .
-```
-
-Ensure Ollama is installed:
-
-```
-brew install ollama
-ollama pull phi3:mini   # recommended lightweight model
-```
-
-Test:
-
-buddy --help
-
-## 🧪 Usage
-
-1. Index your repo(s)
-
-```
-buddy init ./path/to/repo
-```
-
-2. Ask questions
-
-```
-buddy ask "Where is the authentication implemented?"
-```
-
-3. Generate an onboarding summary
-
-```
-buddy summary
-```
-
-
-##  🧱 Internal Architecture (MVP)
+## How it works
 
 ```
 buddy (Typer CLI)
-     │
-     ├── indexer.py     → walks repos, chunks code
-     ├── embeddings.py  → local MiniLM embeddings
-     ├── db.py          → SQLite vector store
-     ├── rag.py         → semantic retrieval + RAG pipeline
-     ├── llm.py         → Ollama integration (phi3:mini by default)
-     └── config.py      → ~/.buddy paths + constants
+ ├── indexer.py            walks the repo (skips .git, node_modules, .venv, ...) and splits files into 80-line chunks
+ ├── code_chunk_indexer.py AST-based chunking for Python (functions, classes, signatures)
+ ├── embeddings.py         all-MiniLM-L6-v2 via sentence-transformers
+ ├── db.py                 SQLite store at ~/.onboard_ai/index.sqlite
+ ├── rag.py                brute-force cosine retrieval + prompt
+ └── llm.py                Ollama chat (phi3:mini by default, override with BUDDY_MODEL)
 ```
 
-* SQLite stores: file path, chunk text, embedding vector
+## Status and limits
 
-* Retrieval uses cosine similarity
+- The AST chunker is written but **not wired in yet**: indexing still embeds fixed 80-line chunks.
+- Retrieval is a brute-force scan over every chunk. Fine for one repo, slow for many.
+- Supported extensions: `.py .js .jsx .ts .tsx .go .rs .sh .bash .rb .java`.
+- Tests are minimal (`tests/test_filetypes.py`).
 
-* LLM summarizes & answers using structured context
+## Run it
 
-## 🧩 Roadmap
+Requires Python 3.10+, [uv](https://docs.astral.sh/uv/) and [Ollama](https://ollama.com).
 
-### Phase 1 — Python MVP (Current)
+```bash
+git clone https://github.com/13Mai13/buddy && cd buddy
+uv venv && source .venv/bin/activate
+uv pip install -e .
+ollama pull phi3:mini
+buddy init ./path/to/repo
+buddy ask "Where is authentication implemented?"
+```
 
- CLI with Typer
+## License
 
- Multi-repo indexing
-
- Local embeddings (MiniLM)
-
- Vector storage in SQLite
-
- Local LLM via Ollama
-
- Ask + summary commands
-
- Privacy-first, no cloud
-
-### Phase 2 — Improve Accuracy & Speed
-
- Better chunking and file heuristics
-
- Boost based on filenames (auth, login, user)
-
- Reranking results
-
- Smarter onboarding prompts
-
- Skip irrelevant dirs (node_modules, .venv, dist)
-
- Cache only changed files
-
-### Phase 3 — Better Developer Experience
-
- Homebrew formula
-
- Config file under ~/.buddy/config.yaml
-
- Model selection: buddy model list
-
- Search command: buddy search <keyword>
-
- Minimal web UI (optional)
-
-### Phase 4 — Introduce Rust
-
-Rust will be added after validation to:
-
-Package Buddy as a single static binary
-
-Improve indexing speed
-
-Enhance CLI UX
-
-Enable brew install buddy
-
-
-## 🔐 License
-
-Apache 2.0 — permissive, open-source, business-friendly.
-
-
-## 🤝 Contributing
-
-Issues, ideas, and PRs are welcome! Help shape Buddy into the best private AI onboarding tool for developers.
+Apache 2.0
