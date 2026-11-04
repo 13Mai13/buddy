@@ -1,5 +1,7 @@
 # buddy
 
+> *Archived: built in 2025–26 to explore local RAG over code. Not maintained.*
+
 # 🧠 Buddy — Your Private AI Onboarding Assistant for Codebases
 
 **Buddy** helps developers understand complex codebases **fast**.  
